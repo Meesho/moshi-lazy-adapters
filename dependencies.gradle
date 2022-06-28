@@ -1,10 +1,10 @@
 ext {
-  javaVersion = JavaVersion.VERSION_1_7
+  javaVersion = JavaVersion.VERSION_11
 
   ci = 'true'.equals(System.getenv('CI'))
 
   /* Dependencies */
-  moshi = 'com.squareup.moshi:moshi:1.5.0'
+  moshi = 'com.squareup.moshi:moshi:1.13.0'
 
   /* Testing */
   junit = 'junit:junit:4.12'
@@ -14,8 +14,4 @@ ext {
   mockWebServer = 'com.squareup.okhttp3:mockwebserver:3.4.1'
   privateConstructorChecker = 'com.pushtorefresh.java-private-constructor-checker:checker:1.2.0'
   rxJava2 = 'io.reactivex.rxjava2:rxjava:2.0.3'
-
-  autoValueMoshi = 'com.ryanharter.auto.value:auto-value-moshi:0.4.2'
-  autoValueMoshiAnnotations = 'com.ryanharter.auto.value:auto-value-moshi-annotations:0.4.2'
-  autoValueAnnotations = 'com.jakewharton.auto.value:auto-value-annotations:1.3'
 }

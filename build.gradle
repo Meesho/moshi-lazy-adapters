@@ -1,12 +1,19 @@
 buildscript {
+  ext.kotlin_version = '1.6.21'
   repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
+    maven {
+      url 'https://jitpack.io'
+    }
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
   }
 
   // Needed to use auto-value-moshi in tests
   dependencies {
-    classpath 'com.github.tbroyer:gradle-apt-plugin:v0.12'
+    classpath "net.ltgt.gradle:gradle-apt-plugin:0.21"
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
   }
 }
 
@@ -15,6 +22,7 @@ repositories {
 }
 
 apply plugin: 'net.ltgt.apt-idea'
+apply plugin: 'kotlin'
 apply plugin: 'java'
 
 apply from: rootProject.file('dependencies.gradle')
@@ -34,18 +42,24 @@ sourceSets {
 }
 
 dependencies {
-  compile moshi
+  implementation moshi
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
-  testCompile junit
-  testCompile assertJ
-  testCompile privateConstructorChecker
-  testCompile retrofit
-  testCompile retrofitMoshiConverter
-  testCompile mockWebServer
-  testCompile rxJava2
-
-  // This is needed to test integration with auto-value-moshi
-  testCompileOnly autoValueMoshiAnnotations
-  testCompileOnly autoValueAnnotations
-  testApt autoValueMoshi
+  testImplementation junit
+  testImplementation assertJ
+  testImplementation privateConstructorChecker
+  testImplementation retrofit
+  testImplementation retrofitMoshiConverter
+  testImplementation mockWebServer
+  testImplementation rxJava2
+}
+compileKotlin {
+  kotlinOptions {
+    jvmTarget = "11"
+  }
+}
+compileTestKotlin {
+  kotlinOptions {
+    jvmTarget = "11"
+  }
 }
