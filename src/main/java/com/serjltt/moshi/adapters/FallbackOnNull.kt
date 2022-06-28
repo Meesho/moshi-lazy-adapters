@@ -13,100 +13,92 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.serjltt.moshi.adapters;
+package com.serjltt.moshi.adapters
 
-import com.squareup.moshi.JsonAdapter;
-import com.squareup.moshi.JsonQualifier;
-import com.squareup.moshi.Moshi;
-import com.squareup.moshi.Types;
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.util.Set;
-import java.util.Locale;
-
-import static com.serjltt.moshi.adapters.Util.nextAnnotations;
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.JsonQualifier
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import java.lang.reflect.Type
+import java.util.Locale
 
 /**
- * Indicates that the annotated field may be {@code null} in the json source and thus requires a
+ * Indicates that the annotated field may be `null` in the json source and thus requires a
  * fallback value.
  *
- * <p>To leverage from {@linkplain FallbackOnNull} {@linkplain FallbackOnNull#ADAPTER_FACTORY}
- * must be added to your {@linkplain Moshi Moshi instance}:
  *
- * <pre><code>
- *   Moshi moshi = new Moshi.Builder()
- *      .add(FallbackOnNull.ADAPTER_FACTORY)
- *      .build();
- * </code></pre>
+ * To leverage from [FallbackOnNull] [FallbackOnNull.ADAPTER_FACTORY]
+ * must be added to your [Moshi instance][Moshi]:
+ *
+ * <pre>`
+ * Moshi moshi = new Moshi.Builder()
+ * .add(FallbackOnNull.ADAPTER_FACTORY)
+ * .build();
+`</pre> *
  */
-@Documented
+@MustBeDocumented
 @JsonQualifier
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE })
-public @interface FallbackOnNull {
-  /** Fallback value for {@code boolean} primitives. Default: {@code false}. */
-  boolean fallbackBoolean() default false;
+@kotlin.annotation.Retention(AnnotationRetention.RUNTIME)
+@Target(
+    AnnotationTarget.FIELD,
+    AnnotationTarget.FUNCTION,
+    AnnotationTarget.PROPERTY_GETTER,
+    AnnotationTarget.PROPERTY_SETTER,
+    AnnotationTarget.ANNOTATION_CLASS
+)
+annotation class FallbackOnNull(
+    /** Fallback value for `boolean` primitives. Default: `false`.  */
+    val fallbackBoolean: Boolean = false,
+    /** Fallback value for `byte` primitives. Default: `Byte.MIN_VALUE`.  */
+    val fallbackByte: Byte = Byte.MIN_VALUE,
+    /** Fallback value for `char` primitives. Default: `Character.MIN_VALUE`.  */
+    val fallbackChar: Char = Character.MIN_VALUE,
+    /** Fallback value for `double` primitives. Default: `Double.MIN_VALUE`.  */
+    val fallbackDouble: Double = Double.MIN_VALUE,
+    /** Fallback value for `float` primitives. Default: `Float.MIN_VALUE`.  */
+    val fallbackFloat: Float = Float.MIN_VALUE,
+    /** Fallback value for `int` primitives. Default: `Integer.MIN_VALUE`.  */
+    val fallbackInt: Int = Int.MIN_VALUE,
+    /** Fallback value for `long` primitives. Default: `Long.MIN_VALUE`.  */
+    val fallbackLong: Long = Long.MIN_VALUE,
+    /** Fallback value for `short` primitives. Default: `Short.MIN_VALUE`.  */
+    val fallbackShort: Short = Short.MIN_VALUE
+) {
+    companion object {
+        /** Builds an adapter that can process a types annotated with [FallbackOnNull].  */
+        @JvmField
+        val ADAPTER_FACTORY: JsonAdapter.Factory = object : JsonAdapter.Factory {
+            override fun create(
+                type: Type, annotations: Set<Annotation>, moshi: Moshi
+            ): JsonAdapter<*>? {
+                val nextAnnotations = Util.nextAnnotations(annotations, FallbackOnNull::class.java)
+                    ?: return null
+                val rawType = Types.getRawType(type)
+                if (!FallbackOnNullJsonAdapter.PRIMITIVE_CLASSES.contains(rawType)) return null
+                val fallbackType = fallbackType(rawType)
+                val fallback = retrieveFallback(nextAnnotations.first, fallbackType)
+                return FallbackOnNullJsonAdapter(
+                    moshi.adapter(type, nextAnnotations.second), fallback, fallbackType
+                )
+            }
 
-  /** Fallback value for {@code byte} primitives. Default: {@code Byte.MIN_VALUE}. */
-  byte fallbackByte() default Byte.MIN_VALUE;
+            /** Invokes the appropriate fallback method based on the `fallbackType`.  */
+            private fun retrieveFallback(annotation: FallbackOnNull, fallbackType: String): Any {
+                return try {
+                    val fallbackMethod = FallbackOnNull::class.java.getMethod(fallbackType)
+                    fallbackMethod.invoke(annotation)
+                } catch (e: Exception) {
+                    throw AssertionError(e)
+                }
+            }
 
-  /** Fallback value for {@code char} primitives. Default: {@code Character.MIN_VALUE}. */
-  char fallbackChar() default Character.MIN_VALUE;
-
-  /** Fallback value for {@code double} primitives. Default: {@code Double.MIN_VALUE}. */
-  double fallbackDouble() default Double.MIN_VALUE;
-
-  /** Fallback value for {@code float} primitives. Default: {@code Float.MIN_VALUE}. */
-  float fallbackFloat() default Float.MIN_VALUE;
-
-  /** Fallback value for {@code int} primitives. Default: {@code Integer.MIN_VALUE}. */
-  int fallbackInt() default Integer.MIN_VALUE;
-
-  /** Fallback value for {@code long} primitives. Default: {@code Long.MIN_VALUE}. */
-  long fallbackLong() default Long.MIN_VALUE;
-
-  /** Fallback value for {@code short} primitives. Default: {@code Short.MIN_VALUE}. */
-  short fallbackShort() default Short.MIN_VALUE;
-
-  /** Builds an adapter that can process a types annotated with {@link FallbackOnNull}. */
-  JsonAdapter.Factory ADAPTER_FACTORY = new JsonAdapter.Factory() {
-    @Override public JsonAdapter<?> create(Type type, Set<? extends Annotation> annotations,
-        Moshi moshi) {
-      Pair<FallbackOnNull, Set<Annotation>> nextAnnotations =
-          nextAnnotations(annotations, FallbackOnNull.class);
-      if (nextAnnotations == null) return null;
-
-      Class<?> rawType = Types.getRawType(type);
-      if (!FallbackOnNullJsonAdapter.PRIMITIVE_CLASSES.contains(rawType)) return null;
-
-      String fallbackType = fallbackType(rawType);
-      Object fallback = retrieveFallback(nextAnnotations.first, fallbackType);
-
-      return new FallbackOnNullJsonAdapter<>(moshi.adapter(type, nextAnnotations.second),
-          fallback, fallbackType);
+            /** Constructs the appropriate fallback method name based on the `rawType`.  */
+            private fun fallbackType(rawType: Class<*>): String {
+                val typeName: String = rawType.simpleName
+                val methodSuffix: String =
+                    typeName.substring(0, 1).uppercase(Locale.US) + typeName.substring(1)
+                return "fallback$methodSuffix"
+            }
+        }
     }
-
-    /** Invokes the appropriate fallback method based on the {@code fallbackType}. */
-    private Object retrieveFallback(FallbackOnNull annotation, String fallbackType) {
-      try {
-        Method fallbackMethod = FallbackOnNull.class.getMethod(fallbackType);
-        return fallbackMethod.invoke(annotation);
-      } catch (Exception e) {
-        throw new AssertionError(e);
-      }
-    }
-
-    /** Constructs the appropriate fallback method name based on the {@code rawType}. */
-    private String fallbackType(Class<?> rawType) {
-      String typeName = rawType.getSimpleName();
-      String methodSuffix = typeName.substring(0, 1).toUpperCase(Locale.US) + typeName.substring(1);
-      return "fallback" + methodSuffix;
-    }
-  };
 }

@@ -14,58 +14,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.serjltt.moshi.adapters;
+package com.serjltt.moshi.adapters
 
-import com.squareup.moshi.JsonQualifier;
-import java.lang.annotation.Annotation;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import com.squareup.moshi.JsonQualifier
+import java.util.Collections
+import java.util.LinkedHashSet
+import kotlin.Pair
 
-final class Util {
-  /**
-   * Checks if {@code annotations} contains {@code jsonQualifier}.
-   * Returns a pair containing the subset of {@code annotations} without {@code jsonQualifier}
-   * and the {@code jsonQualified} instance, or null if {@code annotations} does not contain
-   * {@code jsonQualifier}.
-   */
-  public static <A extends Annotation> Pair<A, Set<Annotation>> nextAnnotations(
-      Set<? extends Annotation> annotations, Class<A> jsonQualifier) {
-    if (!jsonQualifier.isAnnotationPresent(JsonQualifier.class)) {
-      throw new IllegalArgumentException(jsonQualifier + " is not a JsonQualifier.");
+object Util {
+    /**
+     * Checks if `annotations` contains `jsonQualifier`.
+     * Returns a pair containing the subset of `annotations` without `jsonQualifier`
+     * and the `jsonQualified` instance, or null if `annotations` does not contain
+     * `jsonQualifier`.
+     */
+    fun <A : Annotation> nextAnnotations(
+        annotations: Set<Annotation>, jsonQualifier: Class<A>
+    ): Pair<A, Set<Annotation?>>? {
+        require(jsonQualifier.isAnnotationPresent(JsonQualifier::class.java)) { "$jsonQualifier is not a JsonQualifier." }
+        if (annotations.isEmpty()) {
+            return null
+        }
+        for (annotation in annotations) {
+            if (jsonQualifier == annotation.annotationClass.java) {
+                val delegateAnnotations: LinkedHashSet<Annotation?> = linkedSetOf()
+                delegateAnnotations.addAll(annotations)
+                delegateAnnotations.remove(annotation)
+                return Pair(annotation as A, Collections.unmodifiableSet(delegateAnnotations))
+            }
+            val delegate = findDelegatedAnnotation(annotation, jsonQualifier)
+            if (delegate != null) {
+                val delegateAnnotations: LinkedHashSet<Annotation?> = linkedSetOf()
+                delegateAnnotations.addAll(annotations)
+                delegateAnnotations.remove(annotation)
+                return Pair(delegate, Collections.unmodifiableSet(delegateAnnotations))
+            }
+        }
+        return null
     }
-    if (annotations.isEmpty()) {
-      return null;
-    }
-    for (Annotation annotation : annotations) {
-      if (jsonQualifier.equals(annotation.annotationType())) {
-        Set<? extends Annotation> delegateAnnotations = new LinkedHashSet<>(annotations);
-        delegateAnnotations.remove(annotation);
-        //noinspection unchecked Protected by the if statment.
-        return new Pair<>((A) annotation, Collections.unmodifiableSet(delegateAnnotations));
-      }
-      A delegate = findDelegatedAnnotation(annotation, jsonQualifier);
-      if (delegate != null) {
-        Set<? extends Annotation> delegateAnnotations = new LinkedHashSet<>(annotations);
-        delegateAnnotations.remove(annotation);
-        return new Pair<>(delegate, Collections.unmodifiableSet(delegateAnnotations));
-      }
-    }
-    return null;
-  }
 
-  private static <A extends Annotation> A findDelegatedAnnotation(
-    Annotation annotation, Class<A> jsonQualifier) {
-    for (Annotation delegatedAnnotation : annotation.annotationType().getAnnotations()) {
-      if (jsonQualifier.equals(delegatedAnnotation.annotationType())) {
-        //noinspection unchecked
-        return (A) delegatedAnnotation;
-      }
+    private fun <A : Annotation?> findDelegatedAnnotation(
+        annotation: Annotation, jsonQualifier: Class<A>
+    ): A? {
+        for (delegatedAnnotation in annotation.javaClass.annotations) {
+            if (jsonQualifier == delegatedAnnotation.annotationClass.java) {
+                return delegatedAnnotation as A
+            }
+        }
+        return null
     }
-    return null;
-  }
-
-  private Util() {
-    throw new AssertionError("No instances.");
-  }
 }

@@ -13,57 +13,54 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.serjltt.moshi.adapters;
+package com.serjltt.moshi.adapters
 
-import com.squareup.moshi.JsonAdapter;
-import com.squareup.moshi.JsonReader;
-import com.squareup.moshi.JsonWriter;
-import java.io.IOException;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.JsonReader
+import com.squareup.moshi.JsonWriter
+import java.io.IOException
+import java.util.LinkedHashSet
 
 /**
- * {@linkplain JsonAdapter} that fallbacks to a default value of a primitive field annotated with
- * {@linkplain FallbackOnNull}.
+ * [JsonAdapter] that fallbacks to a default value of a primitive field annotated with
+ * [FallbackOnNull].
  */
-final class FallbackOnNullJsonAdapter<T> extends JsonAdapter<T> {
-  /** Set of primitives classes that are supported by <strong>this</strong> adapter. */
-  static final Set<Class<?>> PRIMITIVE_CLASSES = new LinkedHashSet<>();
+internal class FallbackOnNullJsonAdapter<T>(
+    val delegate: JsonAdapter<T>,
+    val fallback: T,
+    private val fallbackType: String
+) : JsonAdapter<T?>() {
+    companion object {
+        /** Set of primitives classes that are supported by **this** adapter.  */
+        @JvmField val PRIMITIVE_CLASSES: MutableSet<Class<*>?> = LinkedHashSet()
 
-  static {
-    PRIMITIVE_CLASSES.add(boolean.class);
-    PRIMITIVE_CLASSES.add(byte.class);
-    PRIMITIVE_CLASSES.add(char.class);
-    PRIMITIVE_CLASSES.add(double.class);
-    PRIMITIVE_CLASSES.add(float.class);
-    PRIMITIVE_CLASSES.add(int.class);
-    PRIMITIVE_CLASSES.add(long.class);
-    PRIMITIVE_CLASSES.add(short.class);
-  }
-
-  final JsonAdapter<T> delegate;
-  final T fallback;
-  final String fallbackType;
-
-  FallbackOnNullJsonAdapter(JsonAdapter<T> delegate, T fallback, String fallbackType) {
-    this.delegate = delegate;
-    this.fallback = fallback;
-    this.fallbackType = fallbackType;
-  }
-
-  @Override public T fromJson(JsonReader reader) throws IOException {
-    if (reader.peek() == JsonReader.Token.NULL) {
-      reader.nextNull(); // We need to consume the value.
-      return fallback;
+        init {
+            PRIMITIVE_CLASSES.add(Boolean::class.javaPrimitiveType)
+            PRIMITIVE_CLASSES.add(Byte::class.javaPrimitiveType)
+            PRIMITIVE_CLASSES.add(Char::class.javaPrimitiveType)
+            PRIMITIVE_CLASSES.add(Double::class.javaPrimitiveType)
+            PRIMITIVE_CLASSES.add(Float::class.javaPrimitiveType)
+            PRIMITIVE_CLASSES.add(Int::class.javaPrimitiveType)
+            PRIMITIVE_CLASSES.add(Long::class.javaPrimitiveType)
+            PRIMITIVE_CLASSES.add(Short::class.javaPrimitiveType)
+        }
     }
-    return delegate.fromJson(reader);
-  }
 
-  @Override public void toJson(JsonWriter writer, T value) throws IOException {
-    delegate.toJson(writer, value);
-  }
+    @Throws(IOException::class)
+    override fun fromJson(reader: JsonReader): T? {
+        if (reader.peek() == JsonReader.Token.NULL) {
+            reader.nextNull<Any>() // We need to consume the value.
+            return fallback
+        }
+        return delegate.fromJson(reader)
+    }
 
-  @Override public String toString() {
-    return delegate + ".fallbackOnNull(" + fallbackType + '=' + fallback + ')';
-  }
+    @Throws(IOException::class)
+    override fun toJson(writer: JsonWriter, value: T?) {
+        delegate.toJson(writer, value)
+    }
+
+    override fun toString(): String {
+        return "$delegate.fallbackOnNull($fallbackType=$fallback)"
+    }
 }
