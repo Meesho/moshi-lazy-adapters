@@ -13,322 +13,378 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.serjltt.moshi.adapters;
+package com.serjltt.moshi.adapters
 
-import com.squareup.moshi.FromJson;
-import com.squareup.moshi.JsonAdapter;
-import com.squareup.moshi.JsonQualifier;
-import com.squareup.moshi.Moshi;
-import com.squareup.moshi.ToJson;
-import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import org.junit.Test;
+import com.serjltt.moshi.adapters.FallbackOnNull
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.Multiply.MultiplyAdapter
+import kotlin.Throws
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.WrapsBool
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.WrapsByte
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.WrapsChar
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.WrapsDouble
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.WrapsFloat
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.WrapsInt
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.WrapsLong
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.WrapsShort
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.AnotherInt
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.Multiply
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.AndAnotherInt
+import com.serjltt.moshi.adapters.FallbackOnNullJsonAdapterTest.AlwaysFallBackToTwoOnNull
+import com.squareup.moshi.*
+import org.assertj.core.api.Assertions
+import org.junit.Test
+import java.io.IOException
+import java.lang.Exception
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+import java.util.*
 
-import static org.assertj.core.api.Assertions.assertThat;
+class FallbackOnNullJsonAdapterTest {
+    // Lazy adapters work only within the context of moshi.
+    private val moshi = Moshi.Builder()
+        .add(FallbackOnNull.ADAPTER_FACTORY)
+        .add(MultiplyAdapter())
+        .build()
 
-public final class FallbackOnNullJsonAdapterTest {
-  // Lazy adapters work only within the context of moshi.
-  private final Moshi moshi = new Moshi.Builder()
-      .add(FallbackOnNull.ADAPTER_FACTORY)
-      .add(new Multiply.MultiplyAdapter())
-      .build();
-
-  @Test public void booleanFallbacks() throws Exception {
-    assertForClass(WrapsBool.class, false, true, "{\"first\":false,\"second\":true}");
-  }
-
-  private static class WrapsBool implements Wrapper<Boolean> {
-    @FallbackOnNull boolean first;
-    @FallbackOnNull(fallbackBoolean = true) boolean second;
-
-    @Override public Boolean first() {
-      return first;
+    @Test
+    @Throws(Exception::class)
+    fun booleanFallbacks() {
+        assertForClass(WrapsBool::class.java, false, true, "{\"first\":false,\"second\":true}")
     }
 
-    @Override public Boolean second() {
-      return second;
-    }
-  }
+    private class WrapsBool : Wrapper<Boolean> {
+        @FallbackOnNull
+        var first = false
 
-  @Test public void byteFallbacks() throws Exception {
-    assertForClass(WrapsByte.class, Byte.MIN_VALUE, (byte) 42, "{\"first\":128,\"second\":42}");
-  }
-
-  private static class WrapsByte implements Wrapper<Byte> {
-    @FallbackOnNull byte first;
-    @FallbackOnNull(fallbackByte = 42) byte second;
-
-    @Override public Byte first() {
-      return first;
-    }
-
-    @Override public Byte second() {
-      return second;
-    }
-  }
-
-  @Test public void charFallbacks() throws Exception {
-    assertForClass(WrapsChar.class, '\u0000', 'a', "{\"first\":\"\\u0000\",\"second\":\"a\"}");
-  }
-
-  private static class WrapsChar implements Wrapper<Character> {
-    @FallbackOnNull char first;
-    @FallbackOnNull(fallbackChar = 'a') char second;
-
-    @Override public Character first() {
-      return first;
-    }
-
-    @Override public Character second() {
-      return second;
-    }
-  }
-
-  @Test public void doubleFallbacks() throws Exception {
-    assertForClass(WrapsDouble.class, Double.MIN_VALUE, 12.0,
-        "{\"first\":4.9E-324,\"second\":12.0}");
-  }
-
-  private static class WrapsDouble implements Wrapper<Double> {
-    @FallbackOnNull double first;
-    @FallbackOnNull(fallbackDouble = 12.0) double second;
-
-    @Override public Double first() {
-      return first;
-    }
-
-    @Override public Double second() {
-      return second;
-    }
-  }
-
-  @Test public void floatFallbacks() throws Exception {
-    assertForClass(WrapsFloat.class, Float.MIN_VALUE, 16.0f,
-        "{\"first\":1.4E-45,\"second\":16.0}");
-  }
-
-  private static class WrapsFloat implements Wrapper<Float> {
-    @FallbackOnNull float first;
-    @FallbackOnNull(fallbackFloat = 16.0f) float second;
-
-    @Override public Float first() {
-      return first;
-    }
-
-    @Override public Float second() {
-      return second;
-    }
-  }
-
-  @Test public void intFallbacks() throws Exception {
-    assertForClass(WrapsInt.class, Integer.MIN_VALUE, -1, "{\"first\":-2147483648,\"second\":-1}");
-  }
-
-  @Test public void intFallbacksNoLocaleInfluence() throws Exception {
-    Locale defaultLocale = Locale.getDefault();
-
-    Locale.setDefault(new Locale("tr", "TR"));
-    assertForClass(WrapsInt.class, Integer.MIN_VALUE, -1, "{\"first\":-2147483648,\"second\":-1}");
-
-    Locale.setDefault(defaultLocale);
-  }
-
-  private static class WrapsInt implements Wrapper<Integer> {
-    @FallbackOnNull int first;
-    @FallbackOnNull(fallbackInt = -1) int second;
-
-    @Override public Integer first() {
-      return first;
-    }
-
-    @Override public Integer second() {
-      return second;
-    }
-  }
-
-  @Test public void longFallbacks() throws Exception {
-    assertForClass(WrapsLong.class, Long.MIN_VALUE, -113L,
-        "{\"first\":-9223372036854775808,\"second\":-113}");
-  }
-
-  private static class WrapsLong implements Wrapper<Long> {
-    @FallbackOnNull long first;
-    @FallbackOnNull(fallbackLong = -113) long second;
-
-    @Override public Long first() {
-      return first;
-    }
-
-    @Override public Long second() {
-      return second;
-    }
-  }
-
-  @Test public void shortFallbacks() throws Exception {
-    assertForClass(WrapsShort.class, Short.MIN_VALUE, (short) 121,
-        "{\"first\":-32768,\"second\":121}");
-  }
-
-  private static class WrapsShort implements Wrapper<Short> {
-    @FallbackOnNull short first;
-    @FallbackOnNull(fallbackShort = 121) short second;
-
-    @Override public Short first() {
-      return first;
-    }
-
-    @Override public Short second() {
-      return second;
-    }
-  }
-
-  @Test public void factoryMaintainsOtherAnnotations() throws Exception {
-    JsonAdapter<AnotherInt> adapter = moshi.adapter(AnotherInt.class);
-
-    AnotherInt fromJson = adapter.fromJson("{\n"
-        + "  \"willFallback\": null,\n"
-        + "  \"willMultiply\": 3\n"
-        + "}");
-    assertThat(fromJson.willFallback).isEqualTo(2);
-    assertThat(fromJson.willMultiply).isEqualTo(6);
-
-    String toJson = adapter.toJson(fromJson);
-    // Both values should be serialized by the Multiply json adapter.
-    assertThat(toJson).isEqualTo("{\"willFallback\":1,\"willMultiply\":3}");
-  }
-
-  private static class AnotherInt {
-    @FallbackOnNull(fallbackInt = 2) @Multiply int willFallback;
-    @FallbackOnNull(fallbackInt = 2) @Multiply int willMultiply;
-  }
-
-  @Test public void factoryIgnoresNonPrimitiveTypes() {
-    List<Class<?>> classes = new ArrayList<Class<?>>() {
-      {
-        add(Boolean.class);
-        add(Byte.class);
-        add(Character.class);
-        add(Double.class);
-        add(Float.class);
-        add(Integer.class);
-        add(Long.class);
-        add(Short.class);
-        add(String.class);
-        add(Object.class);
-      }
-    };
-
-    for (Class<?> cls : classes) {
-      assertThat(FallbackOnNull.ADAPTER_FACTORY.create(cls, ANNOTATIONS, moshi)).isNull();
-    }
-  }
-
-  @Test public void fallbackOnNullIsDelegated() throws Exception {
-    JsonAdapter<AndAnotherInt> adapter = moshi.adapter(AndAnotherInt.class);
-
-    AndAnotherInt fromJson = adapter.fromJson("{\n"
-            + "  \"willFallback\": null\n"
-            + "}");
-    assertThat(fromJson.willFallback).isEqualTo(2);
-  }
-
-  private static class AndAnotherInt {
-    @AlwaysFallBackToTwoOnNull int willFallback;
-  }
-
-  @JsonQualifier
-  @FallbackOnNull(fallbackInt = 2)
-  @Retention(RetentionPolicy.RUNTIME)
-  @Target({ ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER })
-  @interface AlwaysFallBackToTwoOnNull { }
-
-  @Test public void toStringReflectsInnerAdapter() throws Exception {
-    JsonAdapter<Integer> adapter = moshi.adapter(int.class, ANNOTATIONS);
-
-    assertThat(adapter.toString())
-        .isEqualTo("JsonAdapter(Integer).fallbackOnNull(fallbackInt=-1)");
-  }
-
-  private static final Set<? extends Annotation> ANNOTATIONS = Collections.singleton(
-      new FallbackOnNull() {
-
-        @Override public Class<? extends Annotation> annotationType() {
-          return FallbackOnNull.class;
+        @FallbackOnNull(fallbackBoolean = true)
+        var second = false
+        override fun first(): Boolean {
+            return first
         }
 
-        @Override public boolean fallbackBoolean() {
-          return false;
+        override fun second(): Boolean {
+            return second
         }
-
-        @Override public byte fallbackByte() {
-          return 0;
-        }
-
-        @Override public char fallbackChar() {
-          return 0;
-        }
-
-        @Override public double fallbackDouble() {
-          return 0;
-        }
-
-        @Override public float fallbackFloat() {
-          return 0;
-        }
-
-        @Override public int fallbackInt() {
-          return -1; // Only this method will be taken into account
-        }
-
-        @Override public long fallbackLong() {
-          return 0;
-        }
-
-        @Override public short fallbackShort() {
-          return 0;
-        }
-      });
-
-  private <T extends Wrapper<P>, P> void assertForClass(Class<T> cls, P first, P second,
-      String asJson) throws IOException {
-    JsonAdapter<T> adapter = moshi.adapter(cls);
-
-    T fromJson = adapter.fromJson("{\n"
-        + "  \"first\": null,\n"
-        + "  \"second\": null\n"
-        + "}");
-    assertThat(fromJson.first()).isEqualTo(first);
-    assertThat(fromJson.second()).isEqualTo(second);
-
-    String toJson = adapter.toJson(fromJson);
-    assertThat(toJson).isEqualTo(asJson);
-  }
-
-  private interface Wrapper<P> {
-    P first();
-
-    P second();
-  }
-
-  @JsonQualifier
-  @Retention(RetentionPolicy.RUNTIME) private @interface Multiply {
-    final class MultiplyAdapter {
-      @Multiply @FromJson int fromJson(int val) {
-        return val * 2;
-      }
-
-      @ToJson int toJson(@Multiply int val) {
-        return val / 2;
-      }
     }
-  }
+
+    @Test
+    @Throws(Exception::class)
+    fun byteFallbacks() {
+        assertForClass(
+            WrapsByte::class.java,
+            Byte.MIN_VALUE,
+            42.toByte(),
+            "{\"first\":128,\"second\":42}"
+        )
+    }
+
+    private class WrapsByte : Wrapper<Byte> {
+        @FallbackOnNull
+        var first: Byte = 0
+
+        @FallbackOnNull(fallbackByte = 42)
+        var second: Byte = 0
+        override fun first(): Byte {
+            return first
+        }
+
+        override fun second(): Byte {
+            return second
+        }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun charFallbacks() {
+        assertForClass(
+            WrapsChar::class.java,
+            '\u0000',
+            'a',
+            "{\"first\":\"\\u0000\",\"second\":\"a\"}"
+        )
+    }
+
+    @JsonClass(generateAdapter = true)
+    private class WrapsChar : Wrapper<Char> {
+        @FallbackOnNull
+        var first = 0.toChar()
+
+        @FallbackOnNull(fallbackChar = 'a')
+        var second = 0.toChar()
+        override fun first(): Char {
+            return first
+        }
+
+        override fun second(): Char {
+            return second
+        }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun doubleFallbacks() {
+        assertForClass(
+            WrapsDouble::class.java, Double.MIN_VALUE, 12.0,
+            "{\"first\":4.9E-324,\"second\":12.0}"
+        )
+    }
+
+    private class WrapsDouble : Wrapper<Double> {
+        @FallbackOnNull
+        var first = 0.0
+
+        @FallbackOnNull(fallbackDouble = 12.0)
+        var second = 0.0
+        override fun first(): Double {
+            return first
+        }
+
+        override fun second(): Double {
+            return second
+        }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun floatFallbacks() {
+        assertForClass(
+            WrapsFloat::class.java, Float.MIN_VALUE, 16.0f,
+            "{\"first\":1.4E-45,\"second\":16.0}"
+        )
+    }
+
+    private class WrapsFloat : Wrapper<Float> {
+        @FallbackOnNull
+        var first = 0f
+
+        @FallbackOnNull(fallbackFloat = 16.0f)
+        var second = 0f
+        override fun first(): Float {
+            return first
+        }
+
+        override fun second(): Float {
+            return second
+        }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun intFallbacks() {
+        assertForClass(
+            WrapsInt::class.java,
+            Int.MIN_VALUE,
+            -1,
+            "{\"first\":-2147483648,\"second\":-1}"
+        )
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun intFallbacksNoLocaleInfluence() {
+        val defaultLocale = Locale.getDefault()
+        Locale.setDefault(Locale("tr", "TR"))
+        assertForClass(
+            WrapsInt::class.java,
+            Int.MIN_VALUE,
+            -1,
+            "{\"first\":-2147483648,\"second\":-1}"
+        )
+        Locale.setDefault(defaultLocale)
+    }
+
+    private class WrapsInt : Wrapper<Int> {
+        @FallbackOnNull
+        var first = 0
+
+        @FallbackOnNull(fallbackInt = -1)
+        var second = 0
+        override fun first(): Int {
+            return first
+        }
+
+        override fun second(): Int {
+            return second
+        }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun longFallbacks() {
+        assertForClass(
+            WrapsLong::class.java, Long.MIN_VALUE, -113L,
+            "{\"first\":-9223372036854775808,\"second\":-113}"
+        )
+    }
+
+    private class WrapsLong : Wrapper<Long> {
+        @FallbackOnNull
+        var first: Long = 0
+
+        @FallbackOnNull(fallbackLong = -113)
+        var second: Long = 0
+        override fun first(): Long {
+            return first
+        }
+
+        override fun second(): Long {
+            return second
+        }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun shortFallbacks() {
+        assertForClass(
+            WrapsShort::class.java, Short.MIN_VALUE, 121.toShort(),
+            "{\"first\":-32768,\"second\":121}"
+        )
+    }
+
+    private class WrapsShort : Wrapper<Short> {
+        @FallbackOnNull
+        var first: Short = 0
+
+        @FallbackOnNull(fallbackShort = 121)
+        var second: Short = 0
+        override fun first(): Short {
+            return first
+        }
+
+        override fun second(): Short {
+            return second
+        }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun factoryMaintainsOtherAnnotations() {
+        val adapter = moshi.adapter(AnotherInt::class.java)
+        val fromJson = adapter.fromJson(
+            """{
+  "willFallback": null,
+  "willMultiply": 3
+}"""
+        )
+        Assertions.assertThat(fromJson!!.willFallback).isEqualTo(2)
+        Assertions.assertThat(fromJson.willMultiply).isEqualTo(6)
+        val toJson = adapter.toJson(fromJson)
+        // Both values should be serialized by the Multiply json adapter.
+        Assertions.assertThat(toJson).isEqualTo("{\"willFallback\":1,\"willMultiply\":3}")
+    }
+
+    private class AnotherInt {
+        @FallbackOnNull(fallbackInt = 2)
+        @Multiply
+        var willFallback = 0
+
+        @FallbackOnNull(fallbackInt = 2)
+        @Multiply
+        var willMultiply = 0
+    }
+
+    @Test
+    fun factoryIgnoresNonPrimitiveTypes() {
+        val classes: ArrayList<Class<*>?> = object : ArrayList<Class<*>?>() {
+            init {
+                add(Boolean::class.java)
+                add(Byte::class.java)
+                add(Char::class.java)
+                add(Double::class.java)
+                add(Float::class.java)
+                add(Int::class.java)
+                add(Long::class.java)
+                add(Short::class.java)
+                add(String::class.java)
+                add(Any::class.java)
+            }
+        }
+        for (cls in classes) {
+            Assertions.assertThat(FallbackOnNull.ADAPTER_FACTORY.create(cls, ANNOTATIONS, moshi))
+                .isNull()
+        }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun fallbackOnNullIsDelegated() {
+        val adapter = moshi.adapter(AndAnotherInt::class.java)
+        val fromJson = adapter.fromJson(
+            """{
+  "willFallback": null
+}"""
+        )
+        Assertions.assertThat(fromJson!!.willFallback).isEqualTo(2)
+    }
+
+    private class AndAnotherInt {
+        @AlwaysFallBackToTwoOnNull
+        var willFallback = 0
+    }
+
+    @JsonQualifier
+    @FallbackOnNull(fallbackInt = 2)
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(
+        AnnotationTarget.FIELD,
+        AnnotationTarget.FUNCTION,
+        AnnotationTarget.PROPERTY_GETTER,
+        AnnotationTarget.PROPERTY_SETTER,
+        AnnotationTarget.VALUE_PARAMETER
+    )
+    internal annotation class AlwaysFallBackToTwoOnNull
+
+    @Test
+    @Throws(Exception::class)
+    fun toStringReflectsInnerAdapter() {
+        val adapter = moshi.adapter<Int>(Int::class.javaPrimitiveType, ANNOTATIONS)
+        Assertions.assertThat(adapter.toString())
+            .isEqualTo("JsonAdapter(Integer).fallbackOnNull(fallbackInt=-1)")
+    }
+
+    @Throws(IOException::class)
+    private fun <T : Wrapper<P>?, P> assertForClass(
+        cls: Class<T>, first: P, second: P,
+        asJson: String
+    ) {
+        val adapter = moshi.adapter(cls)
+        val fromJson = adapter.fromJson(
+            """{
+  "first": null,
+  "second": null
+}"""
+        )
+        Assertions.assertThat(fromJson!!.first()).isEqualTo(first)
+        Assertions.assertThat(fromJson.second()).isEqualTo(second)
+        val toJson = adapter.toJson(fromJson)
+        Assertions.assertThat(toJson).isEqualTo(asJson)
+    }
+
+    private interface Wrapper<P> {
+        fun first(): P
+        fun second(): P
+    }
+
+    @JsonQualifier
+    @Retention(RetentionPolicy.RUNTIME)
+    private annotation class Multiply {
+        class MultiplyAdapter {
+            @Multiply
+            @FromJson
+            fun fromJson(`val`: Int): Int {
+                return `val` * 2
+            }
+
+            @ToJson
+            fun toJson(@Multiply `val`: Int): Int {
+                return `val` / 2
+            }
+        }
+    }
+
+    companion object {
+        private val ANNOTATIONS: Set<Annotation?> =
+            setOf(FallbackOnNull(false, 0, '0', 0.0, 0.0f, -1, 0, 0))
+    }
 }

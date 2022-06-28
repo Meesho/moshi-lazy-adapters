@@ -30,7 +30,6 @@ import com.squareup.moshi.Types
 annotation class DeserializeOnly {
     companion object {
         /** Builds an adapter that can process a types annotated with [DeserializeOnly].  */
-        @JvmField
         val ADAPTER_FACTORY = JsonAdapter.Factory { type, annotations, moshi ->
             val nextAnnotations = Types.nextAnnotations(annotations, DeserializeOnly::class.java)
                 ?: return@Factory null

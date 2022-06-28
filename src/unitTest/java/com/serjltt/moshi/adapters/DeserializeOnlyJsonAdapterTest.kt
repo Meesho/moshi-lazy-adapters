@@ -1,47 +1,58 @@
-package com.serjltt.moshi.adapters;
+package com.serjltt.moshi.adapters
 
-import com.squareup.moshi.JsonAdapter;
-import com.squareup.moshi.Moshi;
-import org.junit.Test;
+import com.squareup.moshi.Moshi
+import com.serjltt.moshi.adapters.DeserializeOnly
+import com.serjltt.moshi.adapters.Custom.CustomAdapter
+import kotlin.Throws
+import com.squareup.moshi.JsonAdapter
+import com.serjltt.moshi.adapters.DeserializeOnlyJsonAdapterTest.Data1
+import com.serjltt.moshi.adapters.DeserializeOnlyJsonAdapterTest.Data2
+import com.serjltt.moshi.adapters.Custom
+import org.assertj.core.api.Assertions
+import org.junit.Test
+import java.lang.Exception
 
-import static org.assertj.core.api.Assertions.assertThat;
+class DeserializeOnlyJsonAdapterTest {
+    // Lazy adapters work only within the context of moshi.
+    private val moshi = Moshi.Builder()
+        .add(DeserializeOnly.ADAPTER_FACTORY)
+        .add(CustomAdapter()) // We need to check that other annotations are not lost.
+        .build()
 
-public final class DeserializeOnlyJsonAdapterTest {
-  // Lazy adapters work only within the context of moshi.
-  private final Moshi moshi = new Moshi.Builder()
-      .add(DeserializeOnly.ADAPTER_FACTORY)
-      .add(new Custom.CustomAdapter()) // We need to check that other annotations are not lost.
-      .build();
+    @Test
+    @Throws(Exception::class)
+    fun deserializeOnly() {
+        val adapter = moshi.adapter(Data1::class.java)
+        val fromJson = adapter.fromJson("{\"data\": \"test\"}")
+        Assertions.assertThat(fromJson!!.data).isEqualTo("test")
+        Assertions.assertThat(adapter.toJson(fromJson)).isEqualTo("{}")
+    }
 
-  @Test public void deserializeOnly() throws Exception {
-    JsonAdapter<Data1> adapter = moshi.adapter(Data1.class);
+    @Test
+    @Throws(Exception::class)
+    fun factoryMaintainsOtherAnnotations() {
+        val adapter = moshi.adapter(Data2::class.java)
+        val fromJson = adapter.fromJson("{\"data\": \"test\"}")
+        Assertions.assertThat(fromJson!!.data).isEqualTo("testCustom")
+        Assertions.assertThat(adapter.toJson(fromJson)).isEqualTo("{}")
+    }
 
-    Data1 fromJson = adapter.fromJson("{\"data\": \"test\"}");
-    assertThat(fromJson.data).isEqualTo("test");
+    @Test
+    @Throws(Exception::class)
+    fun toStringReflectsInnerAdapter() {
+        val adapter = moshi.adapter<String>(String::class.java, DeserializeOnly::class.java)
+        Assertions.assertThat(adapter.toString())
+            .isEqualTo("JsonAdapter(String).nullSafe().deserializeOnly()")
+    }
 
-    assertThat(adapter.toJson(fromJson)).isEqualTo("{}");
-  }
+    private class Data1 {
+        @DeserializeOnly
+        var data: String? = null
+    }
 
-  @Test public void factoryMaintainsOtherAnnotations() throws Exception {
-    JsonAdapter<Data2> adapter = moshi.adapter(Data2.class);
-
-    Data2 fromJson = adapter.fromJson("{\"data\": \"test\"}");
-    assertThat(fromJson.data).isEqualTo("testCustom");
-
-    assertThat(adapter.toJson(fromJson)).isEqualTo("{}");
-  }
-
-  @Test public void toStringReflectsInnerAdapter() throws Exception {
-    JsonAdapter<String> adapter = moshi.adapter(String.class, DeserializeOnly.class);
-
-    assertThat(adapter.toString()).isEqualTo("JsonAdapter(String).nullSafe().deserializeOnly()");
-  }
-
-  private static class Data1 {
-    @DeserializeOnly String data;
-  }
-
-  private static class Data2 {
-    @DeserializeOnly @Custom String data;
-  }
+    private class Data2 {
+        @DeserializeOnly
+        @Custom
+        var data: String? = null
+    }
 }
