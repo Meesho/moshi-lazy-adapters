@@ -1,7 +1,7 @@
 apply plugin: 'jacoco'
 
 jacoco {
-  toolVersion = '0.7.7.201606060606' // See http://www.eclemma.org/jacoco/.
+  toolVersion = '0.8.7' // See http://www.eclemma.org/jacoco/.
 }
 
 jacocoTestReport {
