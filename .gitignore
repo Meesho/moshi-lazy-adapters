@@ -10,3 +10,5 @@ out/
 
 # MacOS junk
 .DS_Store
+.pre-commit-config.yaml
+trufflehog/
